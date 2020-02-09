@@ -1,0 +1,86 @@
+---
+title: "IST 5535 Lab 1: College Data"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+---
+
+# Read Data
+```{r}
+college <- read.csv('College.csv')
+typeof(college)
+knitr::kable(head(college))
+```
+
+# Organizing Data
+```{r}
+rownames(college) <- college[,1]
+college$X <- NULL
+knitr::kable(head(college))
+```
+
+# Data Exploration
+
+## Summary Statistics
+
+```{r}
+summary(college)
+```
+
+## Scatterplot Matrix
+
+```{r}
+pairs(college[,1:10])
+```
+
+## Boxplot
+```{r}
+outstate <- college$Outstate
+private <- college$Private
+boxplot(outstate~private, xlab='Private', ylab='Outstate', main='Outstate vs Private Boxplot')
+
+```
+
+## Elite Students
+```{r}
+univ.types <- ifelse(college$Top10perc > 50, "Elite", "Non-Elite")
+Elite <- univ.types[univ.types == "Elite"]
+summary(Elite)
+```
+Number of elite universities = `r length(Elite)`
+
+## Histogram Plots
+```{r}
+par(mfrow=c(2, 2))
+hist(college$Enroll, main="Enroll Histogram")
+hist(outstate, main="Outstate Histogram")
+hist(college$Grad.Rate, main="Grad.Rate Histogram")
+hist(college$Books, main="Books Histogram")
+```
+
+## Using ggplot2
+```{r}
+library(ggplot2)
+
+par(mfrow=c(1, 2))
+g1 <- ggplot(college, aes(x=Grad.Rate, y=Room.Board)) + geom_point()
+plot(g1)
+```
+
+The graduation rate is typically higher with medium room and board costs (between \$3500 and \$5000) as observed from the central cluster. However, strong non-linearity is present.
+
+``` {r}
+g2 <- ggplot(college, aes(x=Grad.Rate, y=univ.types)) + geom_point()
+plot(g2)
+```
+
+Since the number of non-elite universities are higher so we see a greater number of points in the non-elite class. Moreover, the elite universities have higher graduation rates typically between 60-90% whereas for non-elite universities graduation rates vary a lot. So the earlier relationship with room and board costs has changed significantly.
+
+```{r}
+g3 <- ggplot(college, aes(x=Grad.Rate, y=Top10perc)) + geom_point()
+plot(g3)
+```
+
+Interestingly, the graduate rate follows a strong quadratic trend when compared with the new students from top 10% of high school class which includes both elite and non-elite university students.
