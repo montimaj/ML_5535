@@ -1,0 +1,142 @@
+---
+title: "IST 5535 HW3: Boston Housing Dataset"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+---
+
+# 10. This exercise involves the Boston housing data set.
+
+## (a) How many rows are in this data set? How many columns? What do the rows and columns represent?
+```{r}
+library(MASS)
+knitr::kable(head(Boston))
+boston.nrows <- nrow(Boston)
+boston.ncols <- ncol(Boston)
+```
+
+There are `r boston.nrows` rows and `r boston.ncols` columns in the Boston data set wherein the rows contain the records/observations and the columns indicate the different attributes (predictors) of housing values. The details about this dataset can be found here: https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html   
+
+## (b) Make some pairwise scatterplots of the predictors (columns) in this data set. Describe your findings.
+
+```{r}
+pairs(Boston)
+```
+
+The analyses of the pairwise scatter plots are difficult but it seems some predictors are correlated with crime rate. 
+
+## (c) Are any of the predictors associated with per capita crime rate? If so, explain the relationship.
+```{r}
+library(corrplot)
+corrplot(cor(Boston), method = "number", type = "upper", diag = FALSE)
+```
+
+From this correlation plot, we can clearly observe that rad (index of accessebility to radial highways) and tax (full-value property-tax rate per \$10.000) are highly correleated with the per-capita crime rate having correlation coefficients of 0.63 and 0.58 respectively. Moreover, some other predictors such as lstat, indus, and nox also display a medium correlation (>0.4) with the crime rate. 
+
+## (d) Do any of the suburbs of Boston appear to have particularly high crime rates? Tax rates? Pupil-teacher ratios? Comment on the range of each predictor.
+### Crime Rate
+```{r}
+library(ggplot2)
+
+summary(Boston$crim)
+qplot(Boston$crim, bins=30, ylab="Number of suburbs", xlab="Per capita crime rate by town")
+```
+
+Since the median and maximum of the per capita crime rate are approximately 0.26% and 89% respectively, so there exist some neighborhoods where the crime rate is particularly high.
+
+```{r}
+crime_5perc <- round(nrow(subset(Boston, crim <= 5)) * 100 / boston.nrows, 2)
+```
+
+Crime rate below 5% = `r crime_5perc`%
+
+```{r}
+crime_10perc <- round(nrow(subset(Boston, crim > 10)) * 100 / boston.nrows, 2)
+```
+
+Crime rate above 10% = `r crime_10perc`%
+
+```{r}
+crime_50perc <- round(nrow(subset(Boston, crim > 50)) * 100 / boston.nrows, 2)
+```
+
+Crime rate above 50% = `r crime_50perc`%
+
+### Taxes
+
+```{r}
+summary(Boston$tax)
+qplot(Boston$tax, bins=30, ylab="Number of suburbs", xlab="Full-value property-tax rate per $10.000")
+```
+
+From the summary statistics and the histogram, we observe that in certain places the tax rates are quite high.
+
+```{r}
+tax_lt600 <- round(nrow(subset(Boston, tax <= 600)) * 100 / boston.nrows)
+```
+
+Neighborhoods where tax rates are less than or equal to \$600 = `r tax_lt600`
+
+```{r}
+tax_gt600 <- round(nrow(subset(Boston, tax > 600)) * 100 / boston.nrows)
+```
+
+Neighborhoods where tax rates are greater than \$600 = `r tax_gt600`
+
+### Pupil-Teacher Ratio
+```{r}
+summary(Boston $ptratio)
+qplot(Boston$ptratio, bins=30, ylab="Number of suburbs", xlab="Pupil-Teacher ratio by town")
+```
+
+## (e) How many of the suburbs in this data set bound the Charles river?
+```{r}
+suburb_charles <- nrow(subset(Boston, chas == 1)) 
+```
+
+There are `r suburb_charles` such suburbs.
+
+## (f) What is the median pupil-teacher ratio among the towns in this data set?
+From the summary statistics shown in (d), the median pupil-teacher ratio is 1:`r round(median(Boston$ptratio))`.
+
+## (g) Which suburb of Boston has lowest median value of owneroccupied homes? What are the values of the other predictors for that suburb, and how do those values compare to the overall ranges for those predictors? Comment on your findings.
+```{r}
+min_medv <- min(Boston$medv)
+selected_homes <- subset(Boston, medv == min_medv)
+selected_homes <- selected_homes[order(selected_homes$crim, decreasing=T),]
+min_medv <- min_medv * 1000
+knitr::kable(selected_homes)
+```
+
+Accordingly, suburb(s) `r rownames(selected_homes)` has/have the lowest median value of $`r min_medv`. Both these suburbs have extremely high crime rates with suburb #`r rownames(selected_homes)[1]` and suburb #`r rownames(selected_homes)[2]` having the third and seventh highest crime rates in Boston. This rank statistic is obtained as follows.
+
+```{r}
+crime_rate <- Boston[order(Boston$crim, decreasing=T),]
+knitr::kable(head(crime_rate, 7))
+```
+
+The overall ranges for the predictors are summarized below.
+
+```{r}
+knitr::kable(summary(Boston))
+```
+
+Intriguingly, we notice that the two most important predictors (rad and tax) for crime rate in these suburbs are very high when considering the statistics of the entire Boston housing data. Therefore, it's not recommended to live in these two areas.
+
+## (h) In this data set, how many of the suburbs average more than seven rooms per dwelling? More than eight rooms per dwelling? Comment on the suburbs that average more than eight rooms per dwelling.
+```{r}
+rooms_gt7 <- nrow(subset(Boston, rm > 7))
+```
+
+`r rooms_gt7` suburbs average more than seven rooms per dwelling.
+
+```{r}
+rooms_gt8 <- subset(Boston, rm > 8)
+```
+
+`r nrow(rooms_gt8)` suburbs average more than eight rooms per dwelling.
+
+```{r}
+knitr::kable(rooms_gt8)
+```
+
+These suburbs have fairly low crime rates and a high black population. Here, suburb #365 is a possible outlier because it has high rad, tax, and crim values. We also see that suburb #98 contains the highest black population in Boston with suburb #365 being the highest taxed area. Additionally, most of these suburbs contain a large number of properties built prior to 1940. Moreover, the percentage of the lower status of the population is well below the overall mean in Boston. Also, the pupil-student ratio is moderate. Interestingly, the median value of owner-occupied homes are very high with suburb #226 having the highest medv value in entire Boston.
