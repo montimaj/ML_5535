@@ -65,7 +65,7 @@ hist(college$Books, main="Books Histogram")
 library(ggplot2)
 
 par(mfrow=c(1, 2))
-g1 <- ggplot(college, aes(x=Grad.Rate, y=Room.Board)) + geom_point()
+g1 <- ggplot(college, aes(x=Grad.Rate, y=Room.Board, col=univ.types)) + geom_point() + geom_smooth(method="lm", se=F)
 plot(g1)
 ```
 
