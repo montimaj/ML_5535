@@ -1,0 +1,105 @@
+---
+title: "IST 5535 HW4: Problem 13"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: false
+---
+
+### (a) Using the rnorm() function, create a vector, x, containing 100 observations drawn from a $N(0, 1)$ distribution. This represents a feature, $X$.
+
+```{r}
+set.seed(1)
+x <- rnorm(100)
+```
+
+### (b) Using the rnorm() function, create a vector, eps, containing 100 observations drawn from a $N(0, 0.25)$ distribution i.e. a normal distribution with mean zero and variance 0.25.
+
+```{r}
+eps <- rnorm(100, sd = sqrt(0.25))
+```
+
+### (c) Using x and eps, generate a vector y according to the model $Y = -1 + 0.5X + \epsilon$ (3.39). What is the length of the vector y? What are the values of $\beta_0$ and $\beta_1$ in this linear model?
+
+```{r}
+y <- -1 + 0.5 * x + eps
+```
+
+Length of vector y = `r length(y)`, $\beta_0=-1$ and $\beta_1=0.5$.
+
+### (d) Create a scatterplot displaying the relationship between x and y. Comment on what you observe.
+```{r}
+plot(x, y)
+```
+
+x and y seems to have a linear relationship but some noise is introduced by eps.
+
+### (e) Fit a least squares linear model to predict y using x. Comment on the model obtained. How do $\hat\beta_0$ and $\hat\beta_1$ compare to $\beta_0$ and $\beta_1$?
+```{r}
+lfit1 <- lm(y ~ x)
+summary(lfit1)
+```
+
+The estimated $\hat\beta_0$ and $\hat\beta_1$ are quite close to the actual $\beta_0$ and $\beta_1$ respectively. Since the p-values are all less than 0.05, so we can reject the null hypotheses.
+
+### (f) Display the least squares line on the scatterplot obtained in (d). Draw the population regression line on the plot, in a different color. Use the legend() command to create an appropriate legend.
+```{r}
+plot(x, y)
+abline(lfit1, col = "red")
+abline(-1, 0.5, col = "green")
+legend("bottomright", c("Least squares", "Population regression"), col = c("red", "green"), lty = c(1, 1))
+```
+
+### (g) Now fit a polynomial regression model that predicts y using x and x$^2$. Is there evidence that the quadratic term improves the model fit? Explain your answer.
+```{r}
+qfit <- lm(y ~ x + I(x^2))
+summary(qfit)
+```
+
+The coefficient for x$^2$ is not statistically significant (p-value > 0.05). Moreover, we have a slight increase and decrease in $R^2$ and RSE values respectively. Therefore, the quadratic term is not signficanty improving the model fit and hence, the linear model is preferred.
+
+### (h) Repeat (a)–(f) after modifying the data generation process in such a way that there is $less$ noise in the data. The model (3.39) should remain the same. You can do this by decreasing the variance of the normal distribution used to generate the error term $\epsilon$ in (b). Describe your results.
+
+```{r}
+set.seed(1)
+x <- rnorm(100)
+eps <- rnorm(100, sd = 0.125)
+y <- -1 + 0.5 * x + eps
+plot(x, y, main=paste('Variance =', 0.125^2))
+lfit2 <- lm(y ~ x)
+summary(lfit2)
+plot(x, y)
+abline(lfit2, col = "red")
+abline(-1, 0.5, col = "green")
+legend("bottomright", c("Least squares", "Population regression"), col = c("red", "green"), lty = c(1, 1))
+```
+
+As before, the coefficients are very close to the actual ones. But the linearity has increased and we have a much higher $R^2$ and much lower RSE. Moreover, the population regression and least squares fit lines almost overlap each other due to lower noise.
+
+### (i) Repeat (a)–(f) after modifying the data generation process in such a way that there is $more$ noise in the data. The model (3.39) should remain the same. You can do this by increasing the variance of the normal distribution used to generate the error term $\epsilon$ in (b). Describe your results.
+```{r}
+set.seed(1)
+x <- rnorm(100)
+eps <- rnorm(100, sd = 0.7)
+y <- -1 + 0.5 * x + eps
+plot(x, y, main=paste('Variance =', 0.7^2))
+lfit3 <- lm(y ~ x)
+summary(lfit3)
+plot(x, y)
+abline(lfit3, col = "red")
+abline(-1, 0.5, col = "green")
+legend("bottomright", c("Least squares", "Population regression"), col = c("red", "green"), lty = c(1, 1))
+```
+
+Here, the estimated coefficients are again similar to the actual ones. However, the introduction of more noise reduces the linearity which can be observed from the reduced $R^2$ and RSE values. Also, the gap between the regression and least squares lines has slightly increased as compared to the original model.
+
+### (j) What are the confidence intervals for $\beta_0$ and $\beta_1$ based on the original data set, the noisier data set, and the less noisy data set? Comment on your results.
+```{r}
+c1 <- confint(lfit1)
+c2 <- confint(lfit2)
+c3 <- confint(lfit3)
+stargazer::stargazer(c1, c2, c3, type = 'text')
+```
+
+All the confidence intervals apparently are centred around 0.5. With increasing noise, the intervals widen and with less noise we have more confidence in our estimations.
