@@ -1,0 +1,101 @@
+---
+title: "IST 5535 Lab 2: Collinearity"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+---
+
+# Initialization
+
+```{r}
+set.seed(1)
+x1 <- runif(100)
+x2 <- 0.5 * x1 + rnorm(100) / 10
+y <- 2 + 2 * x1 + 0.3 * x2 + rnorm(100)
+```
+
+Linear model: $y = 2 + 2x_1 + 0.3x_2$ with $\beta_0=2, \beta_1=2,$ and $\beta_2=0.3$.
+
+# Correlation
+```{r}
+cor(x1, x2)
+library(ggplot2)
+qplot(x=x1, y=x2)
+```
+
+$x_1$ and $x_2$ have high positive correlation.
+
+# Regression using x1 and x2
+```{r}
+model1 <- lm(y ~ x1 + x2)
+summary(model1)
+```
+
+$\beta_0$ and $\beta_1$ are estimated wth sufficiently high accuracy. However, the estimated $\beta_2$ has high error. Moreover, the summary statistics show that $\beta_2$ is not statistically significant.  
+
+We can reject $H_0: \beta_1=0$ but we fail to reject $H_0: \beta_2=0$.
+
+# Regression using x1
+```{r}
+model2 <- lm(y ~ x1)
+summary(model2)
+```
+
+Here, the adjusted $R^2$ value increases than before and we can also reject $H_0: \beta_1=0$.
+
+# Regression using x2
+```{r}
+model3 <- lm(y ~ x2)
+summary(model3)
+```
+
+The adjusted $R^2$ reduces and we can reject $H_0: \beta_1=0$.
+
+# Model Comparison
+```{r}
+stargazer::stargazer(model1, model2, model3, type = 'text', star.cutoffs = c(0.05, 0.01, 0.001))
+```
+
+From this model comparison, we can conclude that, model 2 which uses only $x_1$ is the best model and the summary statistics do not contradict each other. This is because model 1 showed that $x_2$ is not a significant predictor which is concordance with our findings for model 2 and 3.
+
+# Additional Observation
+```{r}
+x1_new <- c(x1, 0.1)
+x2_new <- c(x2, 0.8)
+y_new <- c(y, 6)
+```
+
+## New Regression using x1 and x2
+```{r}
+model1 <- lm(y_new ~ x1_new + x2_new)
+summary(model1)
+```
+
+## New Regression using x1
+```{r}
+model2 <- lm(y_new ~ x1_new)
+summary(model2)
+```
+
+## New Regression using x2
+```{r}
+model3 <- lm(y_new ~ x2_new)
+summary(model3)
+```
+
+## New Model Comparison
+```{r}
+stargazer::stargazer(model1, model2, model3, type = 'text', star.cutoffs = c(0.05, 0.01, 0.001))
+```
+
+With this new observation, $x_2$ is has become the statistically significant predictor and we see that the adjusted $R^2$ increases when $x_2$ is present in the models. When we only consider $x_1$, the adjusted $R^2$ decreases.
+
+```{r}
+par(mfrow = c(1, 2))
+plot(x = x1, y = x2, main = "Original Data")
+plot(x = x1_new, y = x2_new, main = "Modified Data", col = ifelse(x1_new == 0.1, "red", "black"))
+```
+
+From these two plots we clearly see that the new data point is an outlier (marked in red).
