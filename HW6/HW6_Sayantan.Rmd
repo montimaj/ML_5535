@@ -1,0 +1,112 @@
+---
+title: "IST 5535 HW6: German Credit Data"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: false
+---
+
+### 1. The data file "credit-g.csv" contains a German credit dataset. The dataset contains 1000 observations (customers) of 21 variables. The response variable is "class". Read in the dataset and explore it. How many customers in the dataset have good credit?
+
+```{r}
+library(dplyr)
+
+credit.data <- read.csv('credit-g.csv')
+glimpse(credit.data)
+summary(credit.data)
+```
+
+### 2. Use ggplot2 package to draw a barchart of 'credit_history' grouped by 'class'. The barchart should satisfy below criteria: - The number of customers under each credit history category should be grouped by class - Has a main title "Distribution of Credit History Grouped by Class" - Has x axis labeled as "Credit History" - Has y axis labeled as "Number of Customers". Explain what insights you can get from the plot regarding predicting customer credit class.
+
+```{r}
+library(ggplot2)
+
+ggplot(data = credit.data, aes(x = credit_history, fill = class)) + 
+  geom_bar() +  
+  labs(y = 'Number of Customers', x = 'Credit History', title = 'Distribution of Credit History Grouped by Class')
+```
+
+The 'existing paid' class has both high 'bad' and 'good' credit histories. 
+
+### 3. Use ggplot2 package to draw a boxplot of 'credit_amount' grouped by 'class'. Explain what insights you can get from the plot regarding predicting customer credit class.
+
+```{r}
+ggplot(data = credit.data, aes(x = 1, y = credit_amount, fill = class)) + 
+  geom_boxplot() +  
+  labs(y = 'Credit Amount', x = 'Value', title = 'Distribution of Credit Amount Grouped by Class')
+```
+
+The credit amount of 'bad' credit users are larger (for all quantiles and median) than that of 'good' users. Also, the number of outliers for 'bad' credit users is less.
+
+### 4. Randomly split the whole dataset as two parts: training set containing 80% of the data, and test set containing 20% of the data.
+
+```{r}
+library(caret)
+
+set.seed(0)
+partition <- createDataPartition(as.factor(credit.data$class), p = 0.8, list = F)
+credit.data.train <- credit.data[partition,]
+credit.data.test <- credit.data[-partition,]
+```
+
+### 5. Conduct a logistic regression to predict bad credit customers in the training set, using all other variables as predictors. Treat “bad” as the positive class and “good” as negative class. That is, the following model specification is used: logit(class='bad'|X) = $\beta_0 + \beta_1X_1 + \beta_2X_2 + ... + \beta_pX_p$
+
+```{r}
+logit.fit <- glm(class ~ ., family = binomial(link='logit'), data = credit.data.train)
+
+summary(logit.fit)
+```
+
+#### a.	Explain variables that have significant positive or negative effects. Do these directions of these effects make sense? Are the logistic regression results consistent with your findings in steps 2 and 3?
+
+Here, all the predictors having p-values < 0.05 or absolute z-value > 2 are significant. Here, we see that 'critical/other existing credit' type of credits and 'credit amount' are both significant. This finding is consisent with steps 2 and 3.
+
+#### b. Evaluate the performance of the logistic regression on the test set. Calculate overall accuracy, sensitivity, and specificity. Which measure is best to evaluate how the model predicts bad credit customers? Does this logistic regression model do a good job in classifying bad credit customers?
+
+```{r}
+test_probs <- predict(logit.fit, newdata = credit.data.test, type = "response")
+
+# Show the first 10 values
+knitr::kable(test_probs[1:10])
+test_pred <- ifelse(test_probs >.5, "good", "bad")
+
+# Show confusion matrix
+confusionMatrix(factor(test_pred), credit.data.test$class, positive = "bad")
+sensitivity(factor(test_pred), credit.data.test$class, positive = "bad")
+specificity(factor(test_pred), credit.data.test$class, negative = "good")
+```
+
+The overall accuracy is 0.76 which is somewhat acceptable. However, we suffer from low sensitivity which means that the model does not do a good job in classifying bad credit customers. On the other hand, the model does very well to identify good credit customers due to the high specificity. 
+
+### 6. Perform LDA on the training data in order to predict class using only the variables that are found significantly impacting the credit class in the logistic regression analysis (include the whole categorical variable even some levels are not significant in logistic regression). Calculate overall accuracy, sensitivity, and specificity on the test data. Does the model do a good job in classifying bad credit customers?
+
+```{r}
+predictors <- summary(logit.fit)$coeff[-1,4] < 0.05
+predictor.names <- names(predictors)[predictors == T]
+predictor.names
+```
+
+The significant predictors obtained from the logistic regression are- checking_status, credit_history, credit_amount, savings_status, employment, personal_status, other_parties, other_payment_plans, foreign_worker, and installment_commitment.
+
+```{r}
+library(MASS)
+
+lda.fit <- lda(class ~ checking_status + credit_history + credit_amount + savings_status + employment + personal_status + other_parties + other_payment_plans + foreign_worker + installment_commitment, data = credit.data.train)
+summary(lda.fit)
+lda.fit$scaling
+plot(lda.fit)
+lda.pred <- predict(lda.fit, newdata = credit.data.test)
+names(lda.pred)
+```
+
+The following figure shows how the data are classified. Classes "bad" and "good" are colored as red and green correspondingly. 
+
+The green points in class 2 ("good") and red points in class 1 ("bad") represent the misclassified response.
+
+```{r}
+plot(lda.pred$x, lda.pred$class, col = c("green","red")[credit.data.test$class], xlab = 'LD1', ylab = 'Predicted Class')
+confusionMatrix(factor(lda.pred$class), credit.data.test$class, positive = "bad")
+```
+
+Here, we observe that the overall accuracy has slightly increased along with the specificity. However, the sensitivity is decreased. So this model is doing worse than the logistic regression.
