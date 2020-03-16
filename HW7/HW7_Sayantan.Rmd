@@ -1,0 +1,129 @@
+---
+title: "IST 5535 HW7: UniversalBank Data"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+# Clean the environment
+rm(list = ls())
+```
+### 1. Import the data, show the structure of the dataset. Explain what variables in the dataset that are currently represented as quantitative variables but should be measured by nominal scale. Do not include those dummy variables.
+
+```{r}
+bank.data <- read.csv('UniversalBank.csv')
+str(bank.data)
+```
+
+The variables in the dataset which should be measured using nominal scale are "Id" and "ZIPCode".
+
+### 2. Convert the data type of Education variable to dummies. Also remove the customer ID and zip code from the dataset.
+
+```{r}
+bank.data$Education <- factor(bank.data$Education)
+bank.data$Id <- NULL
+bank.data$ZIPCode <- NULL
+summary(bank.data)
+```
+
+### 3. Use logistic regression, LDA, and QDA to predict whether a customer accepts personal loan offered in the last campaign by Universal Bank. Use other variables remained in the dataset as predictors. Fit the machine learning models to the whole dataset (do not manually split the dataset into training and test sets) by using a 5-fold cross validation to calculate the performance measures including balanced accuracy, sensitivity, and specificity.
+
+```{r}
+library(caret)
+library(MASS)
+
+## Original author: Dr. Chen
+## Modified by: Sayantan Majumdar
+k.folds <- function(k, data, response, model_name) {
+  set.seed(123)  
+  folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+    balanced_accuracies <- c()
+    sensitivity_val <- c()
+    specificity_val <- c()
+    f <- as.formula(paste(response, '~ .'))
+    for (i in 1:k) {
+      if (model_name == "glm") {
+        model <- glm(f, data = data[folds[[i]],], family = binomial(link='logit'))
+      } else if(model_name == 'lda') {
+      model <- lda(f, data = data[folds[[i]],])
+      } else {
+        model <- qda(f, data = data[folds[[i]],])
+      }
+        pred_prob_cv <- predict(object = model, newdata = data[-folds[[i]],], type = "response")
+      if (model_name == "glm") {
+        pred_class_cv <- ifelse(pred_prob_cv > 0.5, 1, 0)
+      } else {
+        pred_class_cv <- pred_prob_cv$class
+      }
+
+      cmat <- confusionMatrix(factor(pred_class_cv), factor(data[-folds[[i]], ][[response]]), positive = "1")
+      balanced_accuracies <- c(balanced_accuracies, cmat$byClass['Balanced Accuracy'])
+        sensitivity_val <- c(sensitivity_val, cmat$byClass["Sensitivity"])
+        specificity_val <- c(specificity_val, cmat$byClass["Specificity"])
+    }
+    return(list(balanced_accuracies, sensitivity_val, specificity_val))
+}
+
+get_stats <- function(accuracies) {
+  metrics <- c("Balanced Accuracy", "Sensitivity", "Specificity")
+  for (i in 1:3) {
+    metric <- accuracies[[i]]
+    mean.metric <- mean(metric)
+    sd.metric <- sd(metric)
+    cat(metrics[i],':\n Mean = ', mean.metric,"; ",
+      'Standard Deviation = ',sd.metric, ";\n",
+      '95% Confidence Interval = [',
+      mean.metric - sd.metric * 1.96, ", ",
+      mean.metric + sd.metric * 1.96,"]\n", sep = '')
+  }
+}
+```
+
+#### Logistic Regression | Personal Loan Acceptance
+```{r}
+accuracies_cv <- k.folds(5, bank.data, "Personal_Loan", "glm")
+get_stats(accuracies_cv)
+```
+
+#### LDA | Personal Loan Acceptance
+```{r}
+accuracies_cv <- k.folds(5, bank.data, "Personal_Loan", "lda")
+get_stats(accuracies_cv)
+```
+
+#### QDA | Personal Loan Acceptance
+```{r}
+accuracies_cv <- k.folds(5, bank.data, "Personal_Loan", "qda")
+get_stats(accuracies_cv)
+```
+
+Here, we can directly compare these models without using "bootstrapping" because $k$-fold cross-validation approach has been used in each case where $k=5$. We see that the logistic regression performs the best having the highest sensitivity and specificity. It is followed by QDA. LDA performs the worst. Regarding the balanced accuracy, the logistic regression again outperforms the other two. Moreover, QDA has higher balanced accuracy than LDA. Therefore, to summarize, the performance of logistic regression is the best followed by QDA and then LDA.
+
+### 4. Compare logistic regression, LDA, and QDA. Which model performs best for predicting credit card acceptance by the customers in terms of sensitivity? Which model performs best for predicting credit card acceptance by the customers in terms of balanced accuracy?
+
+#### Logistic Regression | Credit Card Acceptance
+```{r}
+accuracies_cv <- k.folds(5, bank.data, "CreditCard", "glm")
+get_stats(accuracies_cv)
+```
+
+#### LDA | Credit Card Acceptance
+```{r}
+accuracies_cv <- k.folds(5, bank.data, "CreditCard", "lda")
+get_stats(accuracies_cv)
+```
+
+#### QDA | Credit Card Acceptance
+```{r}
+accuracies_cv <- k.folds(5, bank.data, "CreditCard", "qda")
+get_stats(accuracies_cv)
+```
+
+For credit card acceptance, the LDA and QDA produce same results and have slightly higher sensitivity than logistic regression. LDA and QDA also have slightly higher balanced accuracy than logistic regression.
