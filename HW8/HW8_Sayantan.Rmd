@@ -1,0 +1,176 @@
+---
+title: "IST 5535 HW8: Linear Model Selection and Regularization"
+author: "Sayantan Majumdar"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: false
+---
+  ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+# Clean the environment
+rm(list = ls())
+```
+
+#### 1. What variables are in the final model identified by the simple univariate feature selection?
+
+```{r}
+library(corrplot)
+library(mlr)
+
+data <- read.csv('HW8Data.csv')
+summary(data)
+corrplot(cor(data), method = "number", type = "upper", diag = F)
+data.task <-  makeRegrTask(data = data, target = "y")
+data.fv <- generateFilterValuesData(data.task, method = "linear.correlation")
+plotFilterValues(data.fv)
+
+data.fit <- lm(y ~ x1 + x2 + x3, data = data)
+summary(data.fit)
+print(BIC(data.fit))
+coefs <- coef(data.fit)
+print(coefs)
+var.names <- names(coefs)
+```
+
+From the above correlation matrix and feature importance plots, it is clear that x4, x5, and x6 should be removed before constructing the linear model. This is because x1, x2, and x3 have high correlation with the response variable, y. The final model is:
+
+$\hat{y}$ = `r coefs[[var.names[1]]]` + `r coefs[[var.names[2]]]`$x_1$ + `r coefs[[var.names[3]]]`$x_2$ + `r coefs[[var.names[4]]]`$x_3$ + $\epsilon$
+
+#### 2.	Use the regsubsets() method in the leaps package to conduct the best subset selection on the whole dataset. Draw a plot to show the dynamics of RSS, Adjusted R$^2$, C$_p$, and BIC across different number of variables.
+
+```{r}
+library(leaps)
+
+train_x <- model.matrix(y ~ ., data = data)[,-1]
+train_y <- data$y
+nv_max <- 2 ^ (ncol(data) - 1)
+fit_best <- regsubsets(x = train_x, y = train_y, nvmax = nv_max)
+fit_best_sum <- summary(fit_best)
+```
+
+##### Best Subset Summary
+RSS = `r fit_best_sum$rss`
+R$^2$ = `r fit_best_sum$adjr2`
+C$_p$ = `r fit_best_sum$cp`
+BIC = `r fit_best_sum$bic`
+
+##### Plot to show the dynamics of RSS, Adjusted R2, Cp, and BIC across different number of variables.
+
+```{r}
+plot_model_stats <- function(fit_summary) {
+  par(mfrow = c(2, 2))
+  
+  plot(fit_summary$rss,
+       xlab = "Number of Variables",
+       ylab = "RSS",
+       type = "l")
+  
+  plot(fit_summary$adjr2,
+       xlab = "Number of Variables",
+       ylab = "Adjusted R2",
+       type = "l")
+  points(which.max(fit_summary$adjr2),
+         fit_summary$adjr2[which.max(fit_summary$adjr2)],
+         col = "red", cex = 2, pch = 20)
+  
+  plot(fit_summary$cp,
+       xlab = " Number of Variables",
+       ylab = " Cp",
+       type = "l")
+  points(which.min(fit_summary$cp),
+         fit_summary$cp[which.min(fit_summary$cp)],
+         col = "red", cex = 2, pch = 20)
+  
+  plot(fit_best_sum$bic,
+       xlab = " Number of Variables",
+       ylab = " BIC",
+       type = "l")
+  points(which.min(fit_summary$bic),
+         fit_summary$bic[which.min(fit_summary$bic)],
+         col = "red", cex = 2, pch = 20)
+}
+plot_model_stats(fit_best_sum)
+```
+
+If we use BIC as the criterion of model selection, the final model should include 3 predictors.
+
+```{r}
+model_stats <- function(fitted_model, num_var) {
+  coefs <- coef(fitted_model, 3)
+  print(coefs)
+  var.names <- names(coefs)
+  data.subset <- data.frame(train_x[, var.names[-1]])
+  data.subset$Price <- train_y
+  str(data.subset)
+}
+model_stats(fit_best)
+```
+
+These include x1, x2, and x4. Therefore, the best subset selection method is not consistent with the univariate feature selection approach because it considers x4 to be of higher significance than x3. Hence, the final model is:
+
+$\hat{y}$ = `r coefs[[var.names[1]]]` + `r coefs[[var.names[2]]]`$x_1$ + `r coefs[[var.names[3]]]`$x_2$ + `r coefs[[var.names[4]]]`$x_4$ + $\epsilon$
+
+#### 3. Use the regsubsets() method to conduct the forward stepwise selection on the whole dataset. Draw a plot to show the dynamics of RSS, Adjusted R$^2$, C$_p$, and BIC across different number of variables.
+
+```{r}
+fit_fwd <- regsubsets(x = train_x, y = train_y, nvmax = nv_max, method = 'forward')
+fit_fwd_sum <- summary(fit_fwd)
+plot_model_stats(fit_fwd_sum)
+model_stats(fit_fwd)
+```
+
+##### Forward Stepwise Selection Summary
+RSS = `r fit_fwd_sum$rss`
+R$^2$ = `r fit_fwd_sum$adjr2`
+C$_p$ = `r fit_fwd_sum$cp`
+BIC = `r fit_fwd_sum$bic`
+
+#### 4. Use the regsubsets() method to conduct the backward stepwise selection on the whole dataset. Draw a plot to show the dynamics of RSS, Adjusted R$^2$, C$_p$, and BIC across different number of variables.
+
+```{r}
+fit_bwd <- regsubsets(x = train_x, y = train_y, nvmax = nv_max, method = 'backward')
+fit_bwd_sum <- summary(fit_bwd)
+plot_model_stats(fit_bwd_sum)
+model_stats(fit_bwd)
+```
+
+##### Backward Stepwise Selection Summary
+RSS = `r fit_bwd_sum$rss`
+R$^2$ = `r fit_bwd_sum$adjr2`
+C$_p$ = `r fit_bwd_sum$cp`
+BIC = `r fit_bwd_sum$bic`
+
+Therefore, the best subset selection, forward stepwise selection, and backward stepwise subset selection methods all result in the same model that includes x1, x2, and x4 as predictor variables. 
+
+#### 5.	Fit a lasso model to fit the whole dataset. Use 10-fold cross-validation to select the optimal value of $\lambda$. Create plots of the cross-validation error as a function of $\lambda$. Use the optimal value of $\lambda$ to build the final lasso model.
+
+```{r}
+library(glmnet)
+
+grid <- 10^seq(10, -2, length = 100)
+print(grid)
+lasso_full <- glmnet(x = train_x, y = train_y, alpha = 1, lambda = grid)
+plot(lasso_full, xvar = 'lambda')
+
+#k-folds CV
+set.seed(1)
+cv_out <- cv.glmnet(train_x, train_y, alpha = 1, lambda = grid, nfolds = 10)
+plot(cv_out)
+
+best_lambda <- cv_out$lambda.min
+print(best_lambda)
+
+coefs <- predict(lasso_full, type = "coefficients", s = best_lambda)
+print(coefs)
+```
+
+We see that none of the coefficients are very close to zero. Therefore, the final lasso model will include all the predictors with the equation being:
+
+$\hat{y}$ = `r coefs[1, 1]` + `r coefs[2, 1]`$x_1$ + `r coefs[3, 1]`$x_2$ + `r coefs[4, 1]`$x_3$ + `r coefs[5, 1]`$x_4$ + `r coefs[6, 1]`$x_5$ + `r coefs[7, 1]`$x_6$ + $\epsilon$
+
+So the final model doesn't do any variable selection.
