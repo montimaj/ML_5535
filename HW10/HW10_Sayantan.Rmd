@@ -132,7 +132,7 @@ svm_cv <- function(data, response, num_folds, kernel_type) {
   set.seed(0)
   f <- as.formula(paste(response, '~ .'))
   if (kernel_type == 'radial') {
-  tune_svm <- tune(svm, f, data = train_scaled, 
+  tune_svm <- tune(svm, f, data = data, 
                    kernel = 'radial', 
                    tunecontrol = 
                      tune.control(
@@ -141,7 +141,7 @@ svm_cv <- function(data, response, num_folds, kernel_type) {
                    ranges = list(cost = 10 ^ (-2: 2), 
                                  gamma = 10 ^ (-2: 2)))
   } else if (kernel_type == 'linear') {
-    tune_svm <- tune(svm, f, data = train_scaled, 
+    tune_svm <- tune(svm, f, data = data, 
                      kernel = 'linear', 
                      tunecontrol = 
                        tune.control(
@@ -149,7 +149,7 @@ svm_cv <- function(data, response, num_folds, kernel_type) {
                          sampling = "cross"), 
                      ranges = list(cost = 10 ^ (-2: 2)))
   } else {
-    tune_svm <- tune(svm, f, data = train_scaled, 
+    tune_svm <- tune(svm, f, data = data, 
                      kernel = 'polynomial', 
                      degree = 2, 
                      tunecontrol = 
@@ -180,7 +180,7 @@ svm_cv_caret <- function(data, response, num_folds, repeats, kernel_type) {
   control <- trainControl(method = 'repeatedcv',
                           number = num_folds,
                           repeats = repeats)
-  svm_tuned <- train(f, data = train_data,
+  svm_tuned <- train(f, data = data,
                      method = kernel_type,
                      trControl = control,
                      tuneGrid = tuneGrid)
@@ -245,7 +245,7 @@ abline(0, 1)
 ##### SVM Performance
 ```{r}
 svm_yhat <- predict(count_svm, newdata = test_scaled)
-svm_yhat <- svm_yhat * sd(train_data$count) + mean(train_data$count)
+svm_yhat <- svm_yhat * sd(test_data$count) + mean(test_data$count)
 svm_results <- postResample(svm_yhat, test_data$count)
 plot(svm_yhat, test_data$count)
 abline(0, 1)
